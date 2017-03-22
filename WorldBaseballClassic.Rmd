@@ -1,0 +1,217 @@
+---
+title: An Exploratory Statistical Overview of Puerto Rico Winning Streak in the 2017 World Baseball Classic
+author: "Felix E. Rivera-Mariani, PhD"
+date: "March 21, 2017"
+output: html_document
+---
+
+# Summary
+In this report, I present a brief overview, from an exploratory statistical standpoint of the offense and pitching performances, of the Puerto Rico winning streak during the 2017 World Baseball Classic (WBC2017) *before the final game vs Team USA*. As of the day this report was prepared, Puerto Rico have **7 wins** and are heading to the **WBC 2017 final**. Let's evaluate how Puerto Rico's execution in offense and pitching supports Team Puerto Rico undefeated record. 
+
+**Note**: This report was elaborated through the programming language [R](https://cran.r-project.org/), and the data and codes that generated this report can be found [here](https://github.com/friveramariani/WordBasebalClassic_2017). The data was extracted from the World Baseball Classic website: https://www.worldbaseballclassic.com/stats/. Information about the author of this report can be found in this website: http://friveram.com/  
+
+# Outline
+
+1) [WBC 2017 Teams by Offensive Categories]
+2) [WBC 2017 Teams by Pitching Categories]
+3) [Brief Discussion of Findings]
+
+# WBC 2017 Teams by Offensive Categories
+Let's first evaluate Puerto Rico's offensive performance and how it relates to its 7 wins. First, you will find offensive statistics per team (**Table 1**) followed by per Team per 9 innings (**Table 2**). For offensive categories per 9 innings, you'll also find bar graphs. The offensive categories to be discussed are the following: 
+
+1) Team
+2) Team's win
+2) **tot_R** = total runs scores
+3) **H** = total hits
+4) **X2B** = doubles
+5) **X3B** = triples
+6) **HR** = home runs
+7) **AVG** = batting average
+8) **OBP** = on-base batting percentage (*perentage of times a player gets on base, including reaching base in a manner that does not include hits, doubles, triples, or home runs*)
+9) **OPS** = on-base plus slugging (*sum of the on-base and slugging percentage: slugging is calculated by dividing total bases of a player by at-bats*)
+
+```{r datasets, echo=FALSE, message =FALSE, warning=FALSE}
+#---set wd and load dataset--------------------------------
+library(tidyverse)
+library(knitr)
+library(gridExtra)
+
+wbc2017 <- read_tsv(paste0("C:/Users/Felix/Dropbox/DataScience/Projects/WordBasebalClassic_2017/data/", "WorldBaseballClassic.txt"), col_types="icccdddddddddddddd")
+
+names(wbc2017)[9:10] <- c("X2B", "X3B")
+
+pitching <- "https://github.com/friveramariani/WordBasebalClassic_2017/blob/master/data/WorldBaseballClassicPitching.txt"
+
+wbc2017_pit <- read_tsv(paste0("C:/Users/Felix/Dropbox/DataScience/Projects/WordBasebalClassic_2017/data/", "WorldBaseballClassicPitching.txt"), col_types = "iccdddddddddddddd")
+```
+
+
+```{r offense, echo=FALSE, warning=FALSE, message=FALSE}
+wbc_wins_by_team <- wbc2017_pit %>% group_by(TEAM) %>% summarise(Wins = sum(W))
+
+wbc_hit_by_team <- wbc2017 %>% 
+                        select(TEAM, R, H, X2B, X3B, HR, SO, SB, AVG, OBP, OPS) %>% 
+                        group_by(TEAM) %>%
+                        summarise(R = sum(R, na.rm=TRUE),
+                            H = sum(H, na.rm=TRUE),
+                            X2B = sum(X2B, na.rm=TRUE),
+                            X3B = sum(X3B, na.rm=TRUE),
+                            HR = sum(HR, na.rm=TRUE),
+                            SO = sum(SO, na.rm=TRUE),
+                            SB = sum(SB, na.rm=TRUE),
+                            AVG = mean(AVG, na.rm=TRUE),
+                            OBP = mean(OBP, na.rm=TRUE),
+                            OPS = mean(OPS, na.rm=TRUE))
+
+wbc_hit_by_team_joined  <- right_join(wbc_hit_by_team, wbc_wins_by_team, by = 'TEAM')
+
+opar <- par(no.readonly = TRUE)
+options(digits = 3)
+
+kable(wbc_hit_by_team_joined %>% select(TEAM, Wins, R, H, X2B, X3B, HR, SO, SB,
+                                        AVG, OBP, OPS) %>% arrange(desc(Wins)), 
+                                            caption = "Table 1: Offensive Summary per Team")
+
+par(opar)
+```
+
+In **table 1 above**, with the exceptions of **doubles per 9 innings**, *Team Puerto Rico* is the leader, or among the top 2, in all offensive categories: hits (*H*), triples (*X3B*), stolen bases (*SB*), batting average (*AVG*). Nevertheless, let's pay attention to on-base percentage (*OBP*) and on-base plus slugging percentage (*OPS*), as this measure how often a players reach base and how are they reaching base, respectively. In both of these metrics, Team Puerto Rico is **first**. More importantly, in Major League Baseball, when a player has an *OPS above 0.900* it represent that the player is reaching base often and it is doing in with power (i.e. may extra-base hits, such as doubles, triples, and/or home runs).  As shown in the table above, Team Puerto Rico is leader in **OPS** with 0.940, which is parallel with Team Puerto Rico leading triples and Home Runs. In summary, Team Puerto Rico, although is also leading in *strikeouts*, is not only reaching base in a high percentage, they are getting on base with power, and this contributes to Team Puerto Rico scoring lots of runs -- **leading in runs scored (R)**.
+
+```{r offense per9, echo=FALSE, warning=FALSE, message=FALSE}
+wbc_hit_by_team_p9 <- wbc_hit_by_team %>% 
+    select(TEAM, R, H, X2B, X3B, HR, SO, SB) %>% 
+    group_by(TEAM) %>%
+    summarise(R_p9 = R/9,
+              H_p9 = H/9, 
+              X2B_p9 = X2B/9, 
+              X3B_p9 = X3B/9,
+              HR_p9 = HR/9,
+              SO_p9 = SO/9,
+              SB_p9 = SB/9)
+
+wbc_hit_by_team_p9_joined  <- right_join(wbc_wins_by_team, wbc_hit_by_team_p9, by = 'TEAM')
+
+opar <- par(no.readonly = TRUE)
+options(digits = 3)
+kable(wbc_hit_by_team_p9_joined %>% select(TEAM, Wins, R_p9, H_p9, X2B_p9, X3B_p9, HR_p9, SO_p9, SB_p9) %>% 
+          arrange(desc(Wins)), caption = "Table 2: Offensive Summary per Team per 9 Innings")
+par(opar)
+```
+
+**Table 2** above summarizes Team Puerto Rico's offense per 9 innings. To better visualize the comparison between WBC's teams in these categories, follow **six bar graphs** below.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=10, fig.width=15}
+
+runs_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -R_p9), y=R_p9)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle ("Runs per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+hits_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -H_p9), y=H_p9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("Hits per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+                    
+X2B_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -X2B_p9), y=X2B_p9)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle("Doubles per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10)) 
+                    
+X3B_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -X3B_p9), y=X3B_p9)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle("Triples per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10)) 
+                    
+HR_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -HR_p9), y=HR_p9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("HR per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+                    
+SO_plot <- ggplot(wbc_hit_by_team_p9_joined, aes(x=reorder(TEAM, -SO_p9), y=SO_p9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("SO per 9 innings") + ylab("") +
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10)) 
+                    
+
+grid.arrange(runs_plot, hits_plot, X2B_plot, X3B_plot, HR_plot, SO_plot, nrow=2, ncol=3)
+```
+
+Similarly to *table 1*, in **table 2** Team Puerto Rico is not only leading in runs scores (above 6 runs per 9 innings) but also leading or among the top two (with the exception of doubles) in all offensive categories. For example, Team Puerto Rico is averaging almost 9 hits, more than 1 double and home run, and more than 1 stolen base per 9 innings. Team Puerto Rico is also among the leaders striking out, which may be an area the team may look forward to improve. Nevertheless, as we saw in *table 1* has a very high *OPS*, which counteracts any negative effects the strikeouts may be having on Team Puerto Rico's offense. If we put the numbers in table 2 together, Team Puerto Rico's victories have been the result of reaching base on a high percentage and with power (i.e. extra-base hits): scoring more than 6 runs per game as results of nearly 9 hits per game, of which nearly **3 out of 9 hits** (**1.33 + 0.33 + 1.22** is approximately 3) are extra-base hits.
+
+
+# WBC 2017 Teams by Pitching Categories
+In a similar approach as with the offensive categories discussed previously, the pitching categories will be first evaluated by team, but only per 9 innings (not cumulative as first performed with offensive categories).   
+
+The categories to be included are the following:
+
+1) **ERA** = earned run average
+2) **SV** = games saves by the bullpen
+3) **Hp9** = total hits allowed
+4) **Rp9** = total runs allowed
+5) **ERp9** = total earned runs allowed
+6) **HRp9** = total home runs allowed
+7) **BBp9** = total base-on-balls allowed
+8) **SOp9** = total strikeouts
+9) **WHIP** = walks and hits allowed per inning
+
+```{r pitching, echo=FALSE, warning=FALSE, message=FALSE}
+wbc_pit_per_team_inn9 <- wbc2017_pit %>% group_by(TEAM) %>% 
+    summarise(W = sum(W, na.rm=TRUE),
+              L = sum(L, na.rm=TRUE),
+              ERA = mean(ERA, na.rm=TRUE),
+              Rp9 = sum(R, na.rm=TRUE)/9,
+              ERp9 = sum(ER, na.rm=TRUE)/9,
+              ER_R_pcnt = ((Rp9 - ERp9)/Rp9)*100,
+              SV = sum(SV, na.rm=TRUE),
+              Hp9 = sum(H, na.rm=TRUE)/9,
+              HRp9 = sum(HR, na.rm=TRUE)/9,
+              BBp9 = sum(BB, na.rm=TRUE)/9,
+              SOp9 = sum(SO, na.rm=TRUE)/9,
+              WHIP = mean(WHIP, na.rm=TRUE))
+
+options(digits = 3)
+kable(wbc_pit_per_team_inn9 %>% select(TEAM, W, L, ERA, Rp9, ERp9, ER_R_pcnt, Hp9, HRp9, BBp9, SOp9, WHIP) %>% 
+          arrange(desc(W)), caption = "Table 3: Pitching Summary per Team per 9 Innings")
+par(opar)
+```
+              
+Find above **table 3**, which summarizes each teams pitching categories per 9 innings. To better visualize the comparison, find the **8 bar graphs below**. 
+
+```{r pit_p9_graphs, echo=FALSE, warning=FALSE, message=FALSE, fig.height=10, fig.width=15}
+era_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -ERA), y=ERA)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle ("ERA") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+runs_all_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -Rp9), y=Rp9)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle ("Runs per allowed 9 inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+era_pcnt_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -ER_R_pcnt), y=ER_R_pcnt)) + 
+                    geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("Pcnt of earned runs") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+hits_all_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -Hp9), y=Hp9)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle("Hits allowed per 9 inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+HR_all_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -HRp9), y=HRp9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("HR allowed per 9 inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+bb_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -BBp9), y=BBp9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("BB allowed per 9 inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+SO_opp_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -SOp9), y=SOp9)) + geom_bar(stat="identity") + 
+                    xlab("") + ggtitle("SO per 9 inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+whip_plot <- ggplot(wbc_pit_per_team_inn9, aes(x=reorder(TEAM, -WHIP), y=WHIP)) + geom_bar(stat="identity") +
+                    xlab("") + ggtitle ("Walks + hits per inn.") + ylab("") + 
+                    theme(axis.text.x = element_text(angle=45, vjust=0.5, size=10))
+
+library(gridExtra)
+grid.arrange(era_plot, runs_all_plot, era_pcnt_plot, hits_all_plot, HR_all_plot, bb_plot, SO_opp_plot, 
+             whip_plot, nrow=3, ncol=3)
+
+```
+
+Among the teams that had more wins than loses (*see the W column*), Team Puerto Rico is also leader or among the leaders in most pitching categories: **lowest ERA, least runs (Rp9) and earned runs(ERp9), least hits (Hp9) allowed, most batters strikeouts (SO), and walks-plus-hits per inning**. On the contrary, Team Puerto Rico is allowing almost 1 home run and approximately 3 walks per 9 innings. Nevertheless, these two latter categories seem to have had limited effect on the pitching performance for Team Puerto Rico in ERA is by far leading in this category, and only **11%** of the runs are unearned (**ER_R_pnct**). Therefore, this suggests that Team Puerto Rico is combining good hitting with good pitching by keeping unearned runs low (suggesting good **defense**) and making the opposition earn their runs. 
+
+# Brief Discussion of Findings
+This report explores the offensive and pitching categories for Team Puerto Rico *prior to the final game versus Team USA* (to be dispute on March 22^nd^ of 2017). Team Puerto Rico is leader or among the leaders in most of the offensive as well as pitching categories, which evidence that Team Puerto Rico's pitching is being supplemented with a good offense. Team Puerto Rico is reaching base often and with power (not only to one-base hits). Furthermore, the low percentage of unearned runs suggest Team Puerto Rico is employing good defense as well. In summary, Team Puerto Rico's success so far in the 2017 WBC has been a combination of good and powerful hitting, effective pitching (including with men on base), and quality defensive execution. 
